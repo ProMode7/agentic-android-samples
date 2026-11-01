@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application
+        android:allowBackup="false"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@android:style/Theme.Material.Light.NoActionBar">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!--
+            The service the AppFunctions compiler generates from BaseShoppingFunctionService.
+
+            All three parts matter for discovery:
+            1. android:permission="...BIND_APP_FUNCTION_SERVICE": the indexer can skip a service
+               without it, and nothing reports an error.
+            2. The intent filter action: the indexer finds AppFunction services with
+               PackageManager.queryIntentServices on this action.
+            3. The "android.app.appfunctions.v2" property: tells the indexer which asset file
+               describes the functions (the compiler writes assets/shopping_functions.xml).
+        -->
+        <service
+            android:name=".ShoppingFunctionService"
+            android:exported="true"
+            android:permission="android.permission.BIND_APP_FUNCTION_SERVICE">
+            <property
+                android:name="android.app.appfunctions.v2"
+                android:value="shopping_functions.xml" />
+            <intent-filter>
+                <action android:name="android.app.appfunctions.AppFunctionService" />
+            </intent-filter>
+        </service>
+    </application>
+</manifest>
