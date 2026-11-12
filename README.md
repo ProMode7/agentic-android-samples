@@ -24,6 +24,46 @@ What this tag shows:
 
 At build time the AppFunctions KSP compiler generates `ShoppingFunctionService` and `assets/shopping_functions.xml`. At install time, AppSearch's apps indexer in system_server reads that XML out of the APK, and agents search the resulting index. Your app's code doesn't run for any of that.
 
+## Episode 2: what happens when an agent calls your app
+
+Article: *What Happens When an Agent Calls Your App* (link added on publication).
+
+What this tag adds:
+
+| File | What it demonstrates |
+|---|---|
+| [`ShoppingApplication.kt`](app/src/main/kotlin/com/promode/agenticandroid/shopping/ShoppingApplication.kt) | `Application.onCreate` runs on every process start, including starts an agent causes. A switch simulates 800 ms of SDK-style init. |
+| [`BaseShoppingFunctionService.kt`](app/src/main/kotlin/com/promode/agenticandroid/shopping/BaseShoppingFunctionService.kt) | Each function logs its thread and stamps its first call into `ApplicationStartInfo`. `addItem` is a `suspend` function that moves its write off the main thread. |
+| [`AgentCallsScreen.kt`](app/src/main/kotlin/com/promode/agenticandroid/shopping/AgentCallsScreen.kt) | Reads `ActivityManager.getHistoricalProcessStartReasons()`: why each process started (an agent call shows `SERVICE`, cold) and the fork, bindApplication and Application.onCreate timestamps. |
+| [`tools/agent_call_timing.py`](tools/agent_call_timing.py) | Times agent-style calls cold, warm, and cold with heavy init. |
+
+<p>
+  <img src="docs/e02-agent-calls.png" width="270" alt="Agent calls tab: a SERVICE cold start with its timeline, and the event log showing addItem entered on main and writing on a worker thread">
+</p>
+
+Reproduce it:
+
+```
+adb shell am force-stop com.promode.agenticandroid.shopping
+adb shell cmd app_function execute-app-function \
+  --package com.promode.agenticandroid.shopping \
+  --function "com.promode.agenticandroid.shopping.BaseShoppingFunctionService#addItem" \
+  --parameters "'{\"itemName\":\"coffee\"}'"
+adb shell dumpsys activity start-info com.promode.agenticandroid.shopping
+```
+
+The newest record reads `reason=SERVICE startType=COLD` with
+`intent=Intent { act=android.app.appfunctions.AppFunctionService … }`: the call started the process.
+
+Measured with `tools/agent_call_timing.py` on an Android 17 emulator (API 37), 5 runs each, host-side
+around the adb command (adb overhead included):
+
+| Scenario | Median | Range |
+|---|---|---|
+| Cold: process not running | 244.5 ms | 222 to 252 ms |
+| Warm: process already running | 32.3 ms | 26 to 35 ms |
+| Cold with 800 ms in `Application.onCreate` | 1074.0 ms | 1059 to 1082 ms |
+
 ## Requirements
 
 - Android Studio with a JDK 17+ (the bundled JBR works).

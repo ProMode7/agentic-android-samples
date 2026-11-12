@@ -60,10 +60,12 @@ private fun SampleApp(shoppingList: ShoppingList) {
             TabRow(selectedTabIndex = tab) {
                 Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("Shopping list") })
                 Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("What agents see") })
+                Tab(selected = tab == 2, onClick = { tab = 2 }, text = { Text("Agent calls") })
             }
             when (tab) {
                 0 -> ShoppingListScreen(shoppingList)
-                else -> AgentViewScreen()
+                1 -> AgentViewScreen()
+                else -> AgentCallsScreen()
             }
         }
     }

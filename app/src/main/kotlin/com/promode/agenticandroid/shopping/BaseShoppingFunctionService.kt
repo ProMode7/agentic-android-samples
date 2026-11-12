@@ -1,8 +1,13 @@
 package com.promode.agenticandroid.shopping
 
+import android.app.ActivityManager
+import android.os.Process
+import android.os.SystemClock
 import androidx.appfunctions.AppFunctionDeclaration
 import androidx.appfunctions.AppFunctionService
 import androidx.appfunctions.AppFunctionServiceEntryPoint
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * The functions this app exposes to agents.
@@ -32,7 +37,15 @@ abstract class BaseShoppingFunctionService : AppFunctionService() {
      * @return The number of items on the list after adding.
      */
     @AppFunctionDeclaration(isDescribedByKDoc = true)
-    internal fun addItem(itemName: String): Long = shoppingList.add(itemName).toLong()
+    internal suspend fun addItem(itemName: String): Long {
+        recordCall("addItem")
+        // App functions are entered on the main thread. Move the write off it.
+        return withContext(Dispatchers.IO) {
+            AgentCallLog.get(applicationContext)
+                .record("addItem writing on thread \"${Thread.currentThread().name}\"")
+            shoppingList.add(itemName).toLong()
+        }
+    }
 
     /**
      * Removes an item from the user's shopping list. Matching ignores case.
@@ -41,7 +54,10 @@ abstract class BaseShoppingFunctionService : AppFunctionService() {
      * @return True if the item was on the list and has been removed, false if it wasn't there.
      */
     @AppFunctionDeclaration(isDescribedByKDoc = true)
-    internal fun removeItem(itemName: String): Boolean = shoppingList.remove(itemName)
+    internal fun removeItem(itemName: String): Boolean {
+        recordCall("removeItem")
+        return shoppingList.remove(itemName)
+    }
 
     /**
      * Returns every item currently on the user's shopping list, in the order they were added.
@@ -49,5 +65,32 @@ abstract class BaseShoppingFunctionService : AppFunctionService() {
      * @return The item names. Empty if the list is empty.
      */
     @AppFunctionDeclaration(isDescribedByKDoc = true)
-    internal fun getItems(): List<String> = shoppingList.items.value
+    internal fun getItems(): List<String> {
+        recordCall("getItems")
+        return shoppingList.items.value
+    }
+
+    /**
+     * Logs which thread and process ran the function, and stamps the first call of this process
+     * into its ApplicationStartInfo so the "Agent calls" tab can show fork → bindApplication →
+     * Application.onCreate → first app function on one timeline.
+     */
+    private fun recordCall(function: String) {
+        AgentCallLog.get(applicationContext).record(
+            "$function ran on thread \"${Thread.currentThread().name}\" in process ${Process.myPid()}"
+        )
+        if (!firstCallStamped) {
+            firstCallStamped = true
+            getSystemService(ActivityManager::class.java)
+                .addStartInfoTimestamp(START_TIMESTAMP_FIRST_APP_FUNCTION, SystemClock.uptimeNanos())
+        }
+    }
+
+    companion object {
+        /** First developer-defined key in ApplicationStartInfo's timestamp range (21..30). */
+        const val START_TIMESTAMP_FIRST_APP_FUNCTION = 21
+
+        /** Per process: only the first function call after a process start is stamped. */
+        @Volatile private var firstCallStamped = false
+    }
 }
