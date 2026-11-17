@@ -20,7 +20,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
+import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -57,15 +57,17 @@ private fun SampleApp(shoppingList: ShoppingList) {
         topBar = { TopAppBar(title = { Text("Agentic Shopping") }) },
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
-            TabRow(selectedTabIndex = tab) {
+            PrimaryScrollableTabRow(selectedTabIndex = tab, edgePadding = 0.dp) {
                 Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("Shopping list") })
                 Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("What agents see") })
                 Tab(selected = tab == 2, onClick = { tab = 2 }, text = { Text("Agent calls") })
+                Tab(selected = tab == 3, onClick = { tab = 3 }, text = { Text("Agent access") })
             }
             when (tab) {
                 0 -> ShoppingListScreen(shoppingList)
                 1 -> AgentViewScreen()
-                else -> AgentCallsScreen()
+                2 -> AgentCallsScreen()
+                else -> AgentAccessScreen()
             }
         }
     }

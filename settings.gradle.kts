@@ -17,3 +17,4 @@ dependencyResolutionManagement {
 rootProject.name = "agentic-android-samples"
 
 include(":app")
+include(":agent")

@@ -64,6 +64,50 @@ around the adb command (adb overhead included):
 | Warm: process already running | 32.3 ms | 26 to 35 ms |
 | Cold with 800 ms in `Application.onCreate` | 1074.0 ms | 1059 to 1082 ms |
 
+## Episode 3: who is allowed to call your app
+
+Article: *Not Every Agent Gets to Call Your App* (link added on publication).
+
+What this tag adds:
+
+| File | What it demonstrates |
+|---|---|
+| [`BaseShoppingFunctionService.kt`](app/src/main/kotlin/com/promode/agenticandroid/shopping/BaseShoppingFunctionService.kt) | `clearList` ships disabled (`isEnabled = false`). When enabled, it still refuses with `AppFunctionDeniedException` while the phone is locked. |
+| [`AgentAccessScreen.kt`](app/src/main/kotlin/com/promode/agenticandroid/shopping/AgentAccessScreen.kt) | An "Agent access" tab: a switch that calls `setAppFunctionEnabled` for `clearList`, and the packages on this device that hold `EXECUTE_APP_FUNCTIONS` or `EXECUTE_APP_FUNCTIONS_SYSTEM`. |
+| [`agent/`](agent/src/main/kotlin/com/promode/agenticandroid/agent/TinyAgentActivity.kt) | **Tiny Agent**, a second app that requests `EXECUTE_APP_FUNCTIONS` and calls `addItem`. It's an ordinary app, so the system refuses it. |
+
+<p>
+  <img src="docs/e03-agent-access.png" width="270" alt="Agent access tab: the clearList switch turned on, and the five permission holders on an Android 17 emulator">
+</p>
+
+Reproduce it:
+
+```
+./gradlew :app:installDebug :agent:installDebug
+
+# 1. An ordinary app asks. Refused before the shopping app starts.
+adb shell am force-stop com.promode.agenticandroid.shopping
+adb shell am start -n com.promode.agenticandroid.agent/.TinyAgentActivity --ez run true
+adb logcat -d -s TinyAgent
+#   EXECUTE_APP_FUNCTIONS granted: false
+#   Error 1000: Caller does not have permission to execute the appfunction
+
+# 2. The shell holds the permission, but clearList is disabled.
+adb shell cmd app_function execute-app-function \
+  --package com.promode.agenticandroid.shopping \
+  --function "com.promode.agenticandroid.shopping.BaseShoppingFunctionService#clearList" \
+  --parameters "'{}'"
+#   ... The app function is disabled (code 1002) ...
+
+# 3. Turn it on (the app's switch, or the shell), lock the phone, call again.
+adb shell cmd app_function set-enabled \
+  --package com.promode.agenticandroid.shopping \
+  --function "com.promode.agenticandroid.shopping.BaseShoppingFunctionService#clearList" \
+  --state enable
+#   With a PIN set and the screen locked:
+#   ... Unlock the phone to clear the shopping list. (code 1000) ...
+```
+
 ## Requirements
 
 - Android Studio with a JDK 17+ (the bundled JBR works).
@@ -76,6 +120,8 @@ Pinned toolchain (see [`gradle/libs.versions.toml`](gradle/libs.versions.toml)):
 ```
 ./gradlew :app:installDebug
 ```
+
+From tag `e03` the repo also has a second app, `:agent` (Tiny Agent). Install it with `./gradlew :agent:installDebug`.
 
 Then see what the system indexed:
 

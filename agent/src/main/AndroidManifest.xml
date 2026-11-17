@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+        Any app can ask for this permission. Whether it gets it depends on how the device
+        defines it: on Android 17 builds without the agent access API it is
+        internal|privileged, so an app installed from a store or with adb never holds it.
+    -->
+    <uses-permission android:name="android.permission.EXECUTE_APP_FUNCTIONS" />
+
+    <!-- Package visibility: lets this app name the shopping app as a target. -->
+    <queries>
+        <package android:name="com.promode.agenticandroid.shopping" />
+    </queries>
+
+    <application
+        android:allowBackup="false"
+        android:label="Tiny Agent"
+        android:theme="@android:style/Theme.Material.Light">
+
+        <activity
+            android:name=".TinyAgentActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

@@ -1,9 +1,11 @@
 package com.promode.agenticandroid.shopping
 
 import android.app.ActivityManager
+import android.app.KeyguardManager
 import android.os.Process
 import android.os.SystemClock
 import androidx.appfunctions.AppFunctionDeclaration
+import androidx.appfunctions.AppFunctionDeniedException
 import androidx.appfunctions.AppFunctionService
 import androidx.appfunctions.AppFunctionServiceEntryPoint
 import kotlinx.coroutines.Dispatchers
@@ -71,6 +73,23 @@ abstract class BaseShoppingFunctionService : AppFunctionService() {
     }
 
     /**
+     * Removes every item from the user's shopping list. The user has to allow this in the app
+     * first, and it is refused while the phone is locked.
+     *
+     * @return The number of items removed.
+     */
+    @AppFunctionDeclaration(isDescribedByKDoc = true, isEnabled = false)
+    internal fun clearList(): Long {
+        recordCall("clearList")
+        // The platform already decided this caller may call us. Whether this action is OK
+        // right now is the app's decision.
+        if (getSystemService(KeyguardManager::class.java).isDeviceLocked) {
+            throw AppFunctionDeniedException("Unlock the phone to clear the shopping list.")
+        }
+        return shoppingList.clear().toLong()
+    }
+
+    /**
      * Logs which thread and process ran the function, and stamps the first call of this process
      * into its ApplicationStartInfo so the "Agent calls" tab can show fork → bindApplication →
      * Application.onCreate → first app function on one timeline.
@@ -87,6 +106,9 @@ abstract class BaseShoppingFunctionService : AppFunctionService() {
     }
 
     companion object {
+        /** The ID agents use for [clearList], and the one the app passes to setAppFunctionEnabled. */
+        const val CLEAR_LIST_ID = "com.promode.agenticandroid.shopping.BaseShoppingFunctionService#clearList"
+
         /** First developer-defined key in ApplicationStartInfo's timestamp range (21..30). */
         const val START_TIMESTAMP_FIRST_APP_FUNCTION = 21
 

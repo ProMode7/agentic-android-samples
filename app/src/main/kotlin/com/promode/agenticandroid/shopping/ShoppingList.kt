@@ -36,6 +36,14 @@ class ShoppingList private constructor(context: Context) {
         return true
     }
 
+    /** Removes every item. Returns how many were removed. */
+    @Synchronized
+    fun clear(): Int {
+        val removed = _items.value.size
+        save(emptyList())
+        return removed
+    }
+
     private fun load(): List<String> =
         prefs.getString(KEY_ITEMS, null)?.split(SEPARATOR)?.filter { it.isNotEmpty() } ?: emptyList()
 
