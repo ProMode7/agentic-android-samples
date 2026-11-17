@@ -12,13 +12,17 @@ import android.os.Bundle
 import android.os.CancellationSignal
 import android.os.OutcomeReceiver
 import android.util.Log
+import android.util.TypedValue
+import android.view.WindowInsets
+import android.view.WindowInsetsController
 import android.widget.Button
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 
 /**
  * A third-party "agent": an ordinary app that asks for EXECUTE_APP_FUNCTIONS and tries to call
- * the shopping app's addItem function, the same call the Gemini app or an adb shell can make.
+ * the shopping app's addItem function, the same call the Google app or an adb shell can make.
  *
  * Launch it, or run it from adb:
  *   adb shell am start -n com.promode.agenticandroid.agent/.TinyAgentActivity --ez run true
@@ -30,17 +34,53 @@ class TinyAgentActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        output = TextView(this).apply { textSize = 15f }
+        val title = TextView(this).apply {
+            text = "Tiny Agent"
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 26f)
+            setTextColor(0xFF1A1A2E.toInt())
+        }
+        val subtitle = TextView(this).apply {
+            text = "An ordinary installed app that asks for EXECUTE_APP_FUNCTIONS."
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+            setPadding(0, dp(4), 0, dp(16))
+        }
         val button = Button(this).apply {
             text = "Ask the shopping app to add \"coffee\""
             setOnClickListener { callAddItem() }
         }
-        setContentView(LinearLayout(this).apply {
+        output = TextView(this).apply {
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+            setPadding(0, dp(16), 0, 0)
+        }
+        val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(48, 160, 48, 48)
+            addView(title)
+            addView(subtitle)
             addView(button)
             addView(output)
+        }
+        setContentView(ScrollView(this).apply {
+            setBackgroundColor(0xFFFFFFFF.toInt())
+            clipToPadding = false
+            addView(content)
+            // targetSdk 37 draws the app edge to edge, so keep the content clear of the
+            // status bar, navigation bar and any display cutout.
+            setOnApplyWindowInsetsListener { view, insets ->
+                val bars = insets.getInsets(
+                    WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout()
+                )
+                val margin = dp(24)
+                view.setPadding(bars.left + margin, bars.top + margin, bars.right + margin, bars.bottom + margin)
+                insets
+            }
         })
+        // Light background, so ask for dark status and navigation bar icons.
+        window.insetsController?.setSystemBarsAppearance(
+            WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
+                WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS,
+            WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
+                WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS,
+        )
         if (intent.getBooleanExtra("run", false)) callAddItem()
     }
 
@@ -73,6 +113,9 @@ class TinyAgentActivity : Activity() {
             },
         )
     }
+
+    private fun dp(value: Int): Int =
+        TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value.toFloat(), resources.displayMetrics).toInt()
 
     private fun show(line: String) {
         Log.i(TAG, line)
